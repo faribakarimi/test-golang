@@ -5,7 +5,32 @@ import (
 	"log"
 	"net/http"
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
+
+type Config struct {
+	ServerName string
+	User       string
+	Password   string
+	DB         string
+}
+
+var getConnectionString = func(config Config) string {
+	return fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&multiStatements=true", config.User, config.Password, config.ServerName, config.DB)
+}
+
+var Connector *gorm.DB
+
+func connect(connectionString string) error {
+	var err error
+	Connector, err = gorm.Open("mysql", connectionString)
+	if err != nil {
+		return err
+	}
+	log.Println("Connection was successful!")
+	return nil
+}
 
 func handleRequests() {
 
@@ -35,6 +60,21 @@ func balance(w http.ResponseWriter, r *http.Request){}
 func getUserItems(w http.ResponseWriter, r *http.Request){}
 
 func main() {
+
 	fmt.Println("Test Golang - Rest API")
+
+	config := Config{
+		ServerName: "localhost:3306",
+		User:       "root",
+		Password:   "root",
+		DB:         "test-golang",
+	}
+
+	connectionString := getConnectionString(config)
+	err := connect(connectionString)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	handleRequests()
 }
