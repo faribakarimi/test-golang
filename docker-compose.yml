@@ -2,12 +2,12 @@ version: '3.1'
 
 services: 
     mysql:
-        container_name: test-golang-mysql
+        container_name: test_golang_mysql
         image: mysql:latest
         restart: always
         environment: 
             MYSQL_ROOT_PASSWORD: root
-            MYSQL_DATABASE: test-golang
+            MYSQL_DATABASE: test_golang_api
         ports: 
             - 3306:3306
         volumes:
