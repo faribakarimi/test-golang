@@ -6,9 +6,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"github.com/faribakarimi/test-golang/api/auth"
+	"github.com/faribakarimi/test-golang/api/models"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
@@ -34,46 +38,14 @@ func connect(connectionString string) error {
 	return nil
 }
 
-type User struct {
-	ID			int		`gorm:"primary_key;auto_increment" json:"id"`
-	Username  	string	`gorm:"size:255;not null" json:"username"`
-	Name     	string	`gorm:"size:255;not null" json:"name"`
-	Family  	string	`gorm:"size:255;not null;" json:"family"`
-	Gender		string	`gorm:"size:10;not null" json:"gender"`
-	Age			uint16	`gorm:"not null" json:"age"`
-	Balance		uint64	`gorm:"not null" json:"balance"`
-}
-
-type Item struct {
-	ID		int		`json:"id"`
-	Name	string	`json:"name"`
-	Price	int		`json:"price"`
-}
-
-type UserItems struct {
-	ID		int	`json:"id"`
-	UserID	int	`json:"userid"`
-	ItemID	int	`json:"itemid"`
-}
-
-func migrateUser(table *User) {
+func migrateUser(table *models.User) {
 	connector.AutoMigrate(&table)
 	log.Println("Table Users migrated.")
 }
 
-func migrateItem(table *Item) {
-	connector.AutoMigrate(&table)
-	log.Println("Table Items migrated.")
-}
-
-func migrateUserItem(table *UserItems) {
-	connector.AutoMigrate(&table)
-	log.Println("Table User Items migrated.")
-}
-
 func register(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
-	var user User
+	var user models.User
 	json.Unmarshal(reqBody, &user)
 	connector.Create(&user)
 	w.Header().Set("Content-Type", "application/json")
@@ -81,7 +53,34 @@ func register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user.ID)
 }
 
-func login(w http.ResponseWriter, r *http.Request)        {}
+func login(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	user := models.User{}
+	json.Unmarshal(reqBody, &user)
+	var err error
+	user1 := models.User{}
+	err = connector.Debug().Model(models.User{}).Where("username = ?", user.Username).Take(&user1).Error
+	if err != nil {
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+	err = models.VerifyPassword(user1.Password, user.Password)
+	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+	token, err := auth.CreateToken(user1.ID)
+	if err != nil {
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+	type Response struct {
+		UserId int
+		Token string
+	}
+	json.NewEncoder(w).Encode(Response{user1.ID, token})
+}
+
 func profile(w http.ResponseWriter, r *http.Request)      {}
 func editProfile(w http.ResponseWriter, r *http.Request)  {}
 func buy(w http.ResponseWriter, r *http.Request)          {}
@@ -122,15 +121,13 @@ func main() {
 		panic(err.Error())
 	}
 
-	migrateUser(&User{})
-	migrateItem(&Item{})
-	migrateUserItem(&UserItems{})
+	migrateUser(&models.User{})
 
-	var item Item
-	item.ID = 1
-	item.Name = "item number 1"
-	item.Price = 500
-	connector.Create(item)
+	// var item models.Item
+	// item.ID = 1
+	// item.Name = "item number 1"
+	// item.Price = 500
+	// connector.Create(item)
 
 	handleRequests()
 }
