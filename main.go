@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -36,14 +35,13 @@ func connect(connectionString string) error {
 }
 
 type User struct {
-	ID			int 	`json:"id"`
-	Username	string	`json:"username"`
-	Password	string	`json:"password"`
-	Name		string	`json:"name"`
-	Family		string	`json:"family"`
-	Gender		string	`json:"gender"`
-	Age			int		`json:"age"`
-	Balance		int		`json:"balance"`
+	ID			int		`gorm:"primary_key;auto_increment" json:"id"`
+	Username  	string	`gorm:"size:255;not null" json:"username"`
+	Name     	string	`gorm:"size:255;not null" json:"name"`
+	Family  	string	`gorm:"size:255;not null;" json:"family"`
+	Gender		string	`gorm:"size:10;not null" json:"gender"`
+	Age			uint16	`gorm:"not null" json:"age"`
+	Balance		uint64	`gorm:"not null" json:"balance"`
 }
 
 type Item struct {
@@ -77,7 +75,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var user User
 	json.Unmarshal(reqBody, &user)
-	connector.Create(user)
+	connector.Create(&user)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user.ID)
@@ -115,7 +113,7 @@ func main() {
 		ServerName: "localhost:3306",
 		User:       "root",
 		Password:   "root",
-		DB:         "test-golang",
+		DB:         "test_golang_api",
 	}
 
 	connectionString := getConnectionString(config)
