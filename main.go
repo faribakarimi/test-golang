@@ -76,12 +76,38 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 	type Response struct {
 		UserId int
-		Token string
+		Token  string
 	}
 	json.NewEncoder(w).Encode(Response{user1.ID, token})
 }
 
-func profile(w http.ResponseWriter, r *http.Request)      {}
+func profile(w http.ResponseWriter, r *http.Request) {
+	err := auth.TokenValid(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	uid, err := auth.ExtractTokenID(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	var user models.User
+	connector.First(&user, uid)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+
 func editProfile(w http.ResponseWriter, r *http.Request)  {}
 func buy(w http.ResponseWriter, r *http.Request)          {}
 func returnItems(w http.ResponseWriter, r *http.Request)  {}
@@ -94,7 +120,7 @@ func handleRequests() {
 
 	myRouter.HandleFunc("/register", register)
 	myRouter.HandleFunc("/login", login)
-	myRouter.HandleFunc("/article", profile)
+	myRouter.HandleFunc("/profile", profile)
 	myRouter.HandleFunc("/profile", editProfile).Methods("PUT")
 	myRouter.HandleFunc("/items", returnItems)
 	myRouter.HandleFunc("buy", buy).Methods("POST")
