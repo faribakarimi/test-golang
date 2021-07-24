@@ -118,9 +118,15 @@ func editProfile(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(false)
 	}
 }
+func returnItems(w http.ResponseWriter, r *http.Request)  {
+	var items []models.Item
+	database.Connector.Find(&items)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(items)
+}
 
 func buy(w http.ResponseWriter, r *http.Request)          {}
-func returnItems(w http.ResponseWriter, r *http.Request)  {}
 func balance(w http.ResponseWriter, r *http.Request)      {}
 func getUserItems(w http.ResponseWriter, r *http.Request) {}
 
