@@ -80,7 +80,44 @@ func profile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-func editProfile(w http.ResponseWriter, r *http.Request)  {}
+func editProfile(w http.ResponseWriter, r *http.Request) {
+	err := auth.TokenValid(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	uid, err := auth.ExtractTokenID(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var user models.User
+	database.Connector.Where("id = ?", uid).Find(&user)
+	json.Unmarshal(reqBody, &user)
+	result := database.Connector.Save(&user)
+
+	w.Header().Set("Content-Type", "application/json")
+	if result.RowsAffected == 1 {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(true)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(false)
+	}
+}
+
 func buy(w http.ResponseWriter, r *http.Request)          {}
 func returnItems(w http.ResponseWriter, r *http.Request)  {}
 func balance(w http.ResponseWriter, r *http.Request)      {}
@@ -92,7 +129,7 @@ func handleRequests() {
 
 	myRouter.HandleFunc("/register", register)
 	myRouter.HandleFunc("/login", login)
-	myRouter.HandleFunc("/profile", profile)
+	myRouter.HandleFunc("/profile", profile).Methods("GET")
 	myRouter.HandleFunc("/profile", editProfile).Methods("PUT")
 	myRouter.HandleFunc("/items", returnItems)
 	myRouter.HandleFunc("buy", buy).Methods("POST")
