@@ -10,6 +10,7 @@ import (
 	"github.com/faribakarimi/test-golang/api/auth"
 	"github.com/faribakarimi/test-golang/api/database"
 	"github.com/faribakarimi/test-golang/api/models"
+	"github.com/faribakarimi/test-golang/api/seed"
 	"github.com/gorilla/mux"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"golang.org/x/crypto/bcrypt"
@@ -157,5 +158,6 @@ func initDB() {
 func main() {
 	initDB()
 	fmt.Println("Test Golang - Rest API")
+	seed.Load(database.Connector)
 	handleRequests()
 }
