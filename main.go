@@ -8,46 +8,18 @@ import (
 	"net/http"
 
 	"github.com/faribakarimi/test-golang/api/auth"
+	"github.com/faribakarimi/test-golang/api/database"
 	"github.com/faribakarimi/test-golang/api/models"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"golang.org/x/crypto/bcrypt"
 )
-
-type Config struct {
-	ServerName string
-	User       string
-	Password   string
-	DB         string
-}
-
-var getConnectionString = func(config Config) string {
-	return fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&multiStatements=true", config.User, config.Password, config.ServerName, config.DB)
-}
-
-var connector *gorm.DB
-
-func connect(connectionString string) error {
-	var err error
-	connector, err = gorm.Open("mysql", connectionString)
-	if err != nil {
-		return err
-	}
-	log.Println("Connection was successful!")
-	return nil
-}
-
-func migrateUser(table *models.User) {
-	connector.AutoMigrate(&table)
-	log.Println("Table Users migrated.")
-}
 
 func register(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var user models.User
 	json.Unmarshal(reqBody, &user)
-	connector.Create(&user)
+	database.Connector.Create(&user)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user.ID)
@@ -59,7 +31,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(reqBody, &user)
 	var err error
 	user1 := models.User{}
-	err = connector.Debug().Model(models.User{}).Where("username = ?", user.Username).Take(&user1).Error
+	err = database.Connector.Debug().Model(models.User{}).Where("username = ?", user.Username).Take(&user1).Error
 	if err != nil {
 		fmt.Fprintf(w, "%s", err.Error())
 		return
@@ -103,7 +75,7 @@ func profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var user models.User
-	connector.First(&user, uid)
+	database.Connector.First(&user, uid)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }
@@ -130,30 +102,23 @@ func handleRequests() {
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
-func main() {
-
-	fmt.Println("Test Golang - Rest API")
-
-	config := Config{
-		ServerName: "localhost:3306",
+func initDB() {
+	config := database.Config{
+		ServerName: "172.26.0.2:3306",
 		User:       "root",
 		Password:   "root",
 		DB:         "test_golang_api",
 	}
-
-	connectionString := getConnectionString(config)
-	err := connect(connectionString)
+	connectionString := database.GetConnectionString(config)
+	err := database.Connect(connectionString)
 	if err != nil {
 		panic(err.Error())
 	}
+	database.MigrateUser(&models.User{})
+}
 
-	migrateUser(&models.User{})
-
-	// var item models.Item
-	// item.ID = 1
-	// item.Name = "item number 1"
-	// item.Price = 500
-	// connector.Create(item)
-
+func main() {
+	initDB()
+	fmt.Println("Test Golang - Rest API")
 	handleRequests()
 }
