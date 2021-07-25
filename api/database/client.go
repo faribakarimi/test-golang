@@ -23,3 +23,15 @@ func MigrateUser(table *models.User) {
 	Connector.AutoMigrate(&table)
 	log.Println("Table Users migrated.")
 }
+
+func MigrateItem(table *models.Item) {
+	Connector.DropTable(&table)
+	Connector.AutoMigrate(&table)
+	log.Println("Table Items migrated.")
+}
+
+func MigrateUserItems(table *models.UserItems) {
+	Connector.DropTable(&table)
+	Connector.AutoMigrate(&table)
+	log.Println("Table User Items migrated.")
+}
