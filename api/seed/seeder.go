@@ -31,18 +31,11 @@ var items = []models.Item{
 }
 
 func Load(db *gorm.DB) {
-	err := db.Debug().DropTableIfExists(&models.Item{}).Error
-	if err != nil {
-		log.Fatalf("Cannot drop table: %v", err)
-	}
-	err = db.Debug().AutoMigrate(&models.Item{}).Error
-	if err != nil {
-		log.Fatalf("Cannot migrate table: %v", err)
-	}
+	var err error
 	for i, _ := range items {
 		err = db.Debug().Model(&models.Item{}).Create(&items[i]).Error
 		if err != nil {
-			log.Fatalf("Cannot seed posts table: %v", err)
+			log.Fatalf("Cannot seed items table: %v", err)
 		}
 	}
 
