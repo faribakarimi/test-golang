@@ -126,7 +126,68 @@ func returnItems(w http.ResponseWriter, r *http.Request)  {
 	json.NewEncoder(w).Encode(items)
 }
 
-func buy(w http.ResponseWriter, r *http.Request)          {}
+func buy(w http.ResponseWriter, r *http.Request) {
+	err := auth.TokenValid(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	uid, err := auth.ExtractTokenID(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	var user models.User
+	database.Connector.Where("id = ?", uid).Find(&user)
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println("---")
+	}
+	var item models.Item
+	err = json.Unmarshal(reqBody, &item)
+	if err != nil {
+		fmt.Println("...")
+		return
+	}
+	err = database.Connector.Where("id = ?", item.ID).Find(&item).Error
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(struct{
+			Error string `json:"string"`
+		}{
+			Error: "Item Not Found",
+		})
+		return
+	}
+	// TODO:: Duplicte item_id
+	if user.Balance <= uint64(item.Price) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(false)
+		return
+	}
+	err = database.Connector.Create(&models.UserItems{UserID: uid,ItemID: item.ID,}).Error
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(struct{
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(true)
+}
+
 func balance(w http.ResponseWriter, r *http.Request)      {}
 func getUserItems(w http.ResponseWriter, r *http.Request) {}
 
@@ -139,7 +200,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/profile", profile).Methods("GET")
 	myRouter.HandleFunc("/profile", editProfile).Methods("PUT")
 	myRouter.HandleFunc("/items", returnItems)
-	myRouter.HandleFunc("buy", buy).Methods("POST")
+	myRouter.HandleFunc("/buy", buy).Methods("POST")
 	myRouter.HandleFunc("balance", balance)
 	myRouter.HandleFunc("userItems", getUserItems)
 
@@ -159,6 +220,8 @@ func initDB() {
 		panic(err.Error())
 	}
 	database.MigrateUser(&models.User{})
+	database.MigrateItem(&models.Item{})
+	database.MigrateUserItems(&models.UserItems{})
 }
 
 func main() {
