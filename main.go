@@ -231,7 +231,33 @@ func balance(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func getUserItems(w http.ResponseWriter, r *http.Request) {}
+func getUserItems(w http.ResponseWriter, r *http.Request) {
+	err := auth.TokenValid(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	uid, err := auth.ExtractTokenID(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	var user_items []models.UserItems
+	database.Connector.Where("user_id = ?", uid).Find(&user_items)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user_items)
+}
 
 func handleRequests() {
 
@@ -244,7 +270,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/items", returnItems)
 	myRouter.HandleFunc("/buy", buy).Methods("POST")
 	myRouter.HandleFunc("/balance", balance)
-	myRouter.HandleFunc("/userItems", getUserItems)
+	myRouter.HandleFunc("/user-items", getUserItems)
 
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
