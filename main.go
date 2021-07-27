@@ -200,7 +200,37 @@ func buy(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(true)
 }
 
-func balance(w http.ResponseWriter, r *http.Request)      {}
+func balance(w http.ResponseWriter, r *http.Request) {
+	err := auth.TokenValid(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	uid, err := auth.ExtractTokenID(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+	var user models.User
+	database.Connector.First(&user, uid)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		Balance uint64
+	}{
+		user.Balance,
+	})
+}
+
 func getUserItems(w http.ResponseWriter, r *http.Request) {}
 
 func handleRequests() {
@@ -213,8 +243,8 @@ func handleRequests() {
 	myRouter.HandleFunc("/profile", editProfile).Methods("PUT")
 	myRouter.HandleFunc("/items", returnItems)
 	myRouter.HandleFunc("/buy", buy).Methods("POST")
-	myRouter.HandleFunc("balance", balance)
-	myRouter.HandleFunc("userItems", getUserItems)
+	myRouter.HandleFunc("/balance", balance)
+	myRouter.HandleFunc("/userItems", getUserItems)
 
 	log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
