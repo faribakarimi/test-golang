@@ -78,7 +78,19 @@ func profile(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	database.Connector.First(&user, uid)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(struct {
+		Username string
+		Name string
+		Family string
+		Gender string
+		Age uint16
+	}{
+		user.Username,
+		user.Name,
+		user.Family,
+		user.Gender,
+		user.Age,
+	})
 }
 
 func editProfile(w http.ResponseWriter, r *http.Request) {
