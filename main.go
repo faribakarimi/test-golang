@@ -182,7 +182,7 @@ func buy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// TODO:: Duplicte item_id
-	if user.Balance <= uint64(item.Price) {
+	if user.Balance < uint64(item.Price) {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(false)
 		return
